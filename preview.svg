@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#0f1117"/>
+
+  <!-- Subtle grid pattern -->
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1a1c26" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+
+  <!-- Accent glow behind logo -->
+  <ellipse cx="600" cy="280" rx="200" ry="160" fill="rgba(245,158,11,0.05)"/>
+
+  <!-- Logo (scaled up from 22x22 viewBox, centered) -->
+  <g transform="translate(480, 140) scale(6.36)">
+    <rect x="2" y="2" width="18" height="18" rx="3" stroke="#f59e0b" stroke-width="1.5" fill="none"/>
+    <rect x="5" y="5" width="5" height="5" rx="1" fill="#f59e0b" opacity="0.6"/>
+    <rect x="12" y="5" width="5" height="5" rx="1" fill="#f59e0b" opacity="0.4"/>
+    <rect x="5" y="12" width="5" height="5" rx="1" fill="#f59e0b" opacity="0.3"/>
+    <rect x="12" y="12" width="5" height="5" rx="1" fill="#f59e0b" opacity="0.8"/>
+  </g>
+
+  <!-- App name -->
+  <text x="600" y="460" font-family="'Segoe UI', system-ui, sans-serif" font-size="56" font-weight="700" fill="#e8eaed" text-anchor="middle" letter-spacing="-1">SLDMAT Editor</text>
+
+  <!-- Tagline -->
+  <text x="600" y="518" font-family="'Segoe UI', system-ui, sans-serif" font-size="26" font-weight="300" fill="#6b7280" text-anchor="middle">SolidWorks material library editor · runs in your browser</text>
+</svg>
