@@ -1,0 +1,1966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SLDMAT Editor</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  /* ── Reset ── */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body, #root { width: 100%; height: 100%; overflow: hidden; }
+
+  /* ── Design tokens ── */
+  :root {
+    --bg:           #0f1117;
+    --surface-1:    #13151d;
+    --surface-2:    #161820;
+    --surface-3:    #1a1c26;
+    --surface-4:    #1c1e28;
+    --border:       #252830;
+    --border-hi:    #3a3d48;
+    --text-hi:      #e8eaed;
+    --text:         #c8ccd4;
+    --text-muted:   #a0a4b0;
+    --text-faint:   #6b7280;
+    --text-dim:     #4a4d58;
+    --text-ghost:   #3a3d48;
+    --accent:       #f59e0b;
+    --accent-10:    rgba(245,158,11,0.10);
+    --accent-08:    rgba(245,158,11,0.08);
+    --accent-04:    rgba(245,158,11,0.04);
+    --accent-sel:   rgba(245,158,11,0.40);
+    --green:        #2a5a3a;
+    --green-hi:     #1c5d2e;
+    --green-text:   #a5f0c0;
+    --green-border: #3a7a4a;
+    --red:          #f87171;
+    --red-border:   #5a2020;
+    --font:         'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+    /* SVG chevron arrow for selects */
+    --arrow-svg: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+
+  /* ── Scrollbars ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-hi); }
+
+  /* ── Base inputs ── */
+  input::placeholder { color: var(--border-hi); }
+  select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+
+  /* ── Animations ── */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+
+  /* ── App shell ── */
+  .app {
+    width: 100%; height: 100vh;
+    display: flex; flex-direction: column;
+    font-family: var(--font); font-size: 12.5px;
+    background: var(--bg); color: var(--text);
+    overflow: hidden; position: relative;
+  }
+
+  /* ── Toast notification ── */
+  .toast {
+    position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+    background: var(--green); color: var(--green-text);
+    padding: 8px 20px; border-radius: 6px; font-size: 12px;
+    z-index: 9999; border: 1px solid var(--green-border);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5); animation: fadeIn 0.2s ease;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px; background: var(--surface-2);
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .header-left  { display: flex; align-items: center; gap: 12px; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .header-logo  { display: flex; align-items: center; gap: 8px; }
+  .header-title    { font-size: 14px; font-weight: 700; color: var(--text-hi); letter-spacing: -0.02em; }
+  .header-subtitle { font-size: 14px; font-weight: 300; color: var(--text-faint); }
+  .header-badge {
+    font-size: 11px; color: var(--text-faint);
+    background: var(--surface-4); padding: 3px 10px; border-radius: 4px;
+  }
+  .header-selection {
+    font-size: 11px; color: var(--accent);
+    background: var(--accent-10); padding: 3px 10px; border-radius: 4px;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    display: flex; align-items: center; gap: 4px;
+    padding: 6px 14px; border: none; border-radius: 6px;
+    cursor: pointer; font-size: 12px; font-family: var(--font); font-weight: 500;
+  }
+  .btn-primary { background: var(--accent); color: var(--bg); font-weight: 600; }
+  .btn-success { background: var(--green-hi); color: var(--green-text); }
+  .btn-secondary {
+    background: var(--surface-4); color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .btn-small {
+    display: flex; align-items: center; gap: 4px;
+    padding: 4px 10px; background: var(--surface-4);
+    border: 1px solid var(--border); border-radius: 5px;
+    color: var(--text-muted); cursor: pointer;
+    font-size: 11px; font-family: var(--font);
+  }
+  .btn-small:hover { background: var(--surface-3); }
+  .btn-danger { color: var(--red) !important; border-color: var(--red-border) !important; }
+
+  /* ── GitHub link ── */
+  .github-link {
+    display: flex; align-items: center; gap: 5px;
+    color: var(--text-faint); text-decoration: none; font-size: 11px;
+    padding: 6px 10px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--surface-4);
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .github-link:hover { color: var(--text-hi); border-color: var(--border-hi); }
+
+  /* ── SW version select ── */
+  .sw-select {
+    background: var(--surface-4); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text-muted);
+    padding: 6px 28px 6px 10px;
+    font-size: 11px; font-family: var(--font); outline: none; cursor: pointer;
+    background-image: var(--arrow-svg);
+    background-repeat: no-repeat; background-position: right 6px center;
+  }
+
+  /* ── Landing page ── */
+  .landing {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 28px;
+  }
+  .landing-title {
+    display: flex; align-items: center; justify-content: center;
+    gap: 10px; margin-bottom: 8px;
+  }
+  .landing-title-text { font-size: 22px; font-weight: 700; color: var(--text-hi); letter-spacing: -0.02em; }
+  .landing-subtitle   { font-size: 12px; color: var(--text-muted); text-align: center; }
+  .landing-cards   { display: flex; gap: 20px; align-items: stretch; }
+  .landing-divider { display: flex; align-items: center; color: #2a2d38; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; }
+  .landing-card {
+    width: 260px; height: 220px;
+    border: 2px dashed #2a2d38; border-radius: 12px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 14px; cursor: pointer; padding: 20px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .landing-card:hover { border-color: var(--accent); background: rgba(245,158,11,0.03); }
+  .landing-card-title { font-size: 13px; font-weight: 600; color: var(--text-hi); }
+  .landing-card-sub   { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
+  .landing-card-tag   { font-size: 10px; color: var(--text-dim); background: #1a1c24; padding: 3px 10px; border-radius: 4px; }
+  .landing-github {
+    display: flex; align-items: center; gap: 6px;
+    color: var(--text-muted); text-decoration: none;
+    font-size: 11px; margin-top: 12px; transition: color 0.15s;
+  }
+  .landing-github:hover { color: var(--text-hi); }
+
+  /* ── Main layout ── */
+  .main { flex: 1; display: flex; overflow: hidden; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    min-width: 220px; max-width: 600px;
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    background: var(--surface-1); flex-shrink: 0;
+  }
+  .sidebar-toolbar {
+    padding: 8px 10px; border-bottom: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .sidebar-search {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface-3); border-radius: 5px; padding: 0 8px;
+  }
+  .sidebar-search input {
+    flex: 1; background: none; border: none; outline: none;
+    color: var(--text); padding: 7px 0;
+    font-size: 12px; font-family: var(--font);
+  }
+  .sidebar-search-icon  { color: var(--text-dim); display: flex; }
+  .sidebar-search-clear { color: var(--text-faint); cursor: pointer; font-size: 14px; }
+  .sidebar-actions { display: flex; gap: 4px; }
+  .sidebar-hint    { font-size: 10px; color: var(--text-faint); padding: 0 2px; }
+  .sidebar-list    { flex: 1; overflow: auto; padding: 4px 0; }
+
+  /* ── Category row ── */
+  .cat-row {
+    display: flex; align-items: center; gap: 4px;
+    padding: 5px 8px 5px 6px; cursor: pointer;
+    border-bottom: 2px solid transparent; transition: background 0.1s;
+  }
+  .cat-row--drop { background: var(--accent-10); border-bottom-color: var(--accent); }
+  .cat-row-icon   { color: var(--accent); margin-right: 4px; display: flex; }
+  .cat-row-name   {
+    flex: 1; font-size: 12px; font-weight: 600; color: var(--text-hi);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .cat-row-count  { font-size: 10px; color: var(--text-dim); margin-right: 4px; }
+  .cat-row-action { color: var(--text-dim); cursor: pointer; display: flex; padding: 2px; }
+  .cat-row-action:hover { color: var(--text-muted); }
+  .cat-rename-input {
+    flex: 1; background: var(--surface-3); border: 1px solid var(--accent);
+    border-radius: 3px; color: var(--text-hi); padding: 2px 6px;
+    font-size: 12px; font-family: var(--font); outline: none;
+  }
+
+  /* ── Merge dropdown ── */
+  .merge-dropdown {
+    background: var(--surface-3); border: 1px solid var(--border);
+    border-radius: 6px; margin: 2px 8px 4px 24px; padding: 6px; z-index: 10;
+  }
+  .merge-dropdown-title {
+    font-size: 10px; color: var(--text-faint); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 6px 4px; margin-bottom: 2px;
+  }
+  .merge-item {
+    padding: 4px 8px; border-radius: 4px; cursor: pointer;
+    font-size: 11px; color: var(--text-muted);
+    display: flex; align-items: center; gap: 6px; transition: background 0.1s;
+  }
+  .merge-item:hover { background: var(--accent-10); color: var(--text-hi); }
+  .merge-cancel {
+    padding: 4px 8px; border-radius: 4px; cursor: pointer;
+    font-size: 10px; color: var(--text-faint); text-align: center;
+    margin-top: 4px; border-top: 1px solid var(--border);
+  }
+  .merge-cancel:hover { color: var(--text-muted); }
+
+  /* ── Material row ── */
+  .mat-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 8px 4px 28px; cursor: pointer;
+    border-left: 2px solid transparent;
+    border-top: 2px solid transparent;
+    transition: background 0.1s;
+  }
+  .mat-row:hover                        { background: rgba(255,255,255,0.02); }
+  .mat-row--selected                    { background: var(--accent-04); border-left-color: var(--accent-sel); }
+  .mat-row--primary                     { background: var(--accent-08); border-left-color: var(--accent); }
+  .mat-row--selected:hover,
+  .mat-row--primary:hover               { background: var(--accent-08); }
+  .mat-row--dragging                    { opacity: 0.4; }
+  .mat-row--drop-target                 { border-top-color: var(--accent); }
+  .mat-row-drag   { color: var(--text-dim); cursor: grab; display: flex; }
+  .mat-row-icon   { display: flex; }
+  .mat-row-icon--selected { color: var(--accent); }
+  .mat-row-icon--default  { color: var(--text-faint); }
+  .mat-row-name   { flex: 1; font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mat-row-name--selected { color: var(--text-hi); }
+  .mat-row-name--default  { color: var(--text-muted); }
+  .mat-row-action { color: var(--text-ghost); cursor: pointer; display: flex; padding: 2px; }
+  .mat-row-action:hover { color: var(--text-faint); }
+  .mat-checkbox {
+    width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .mat-checkbox--checked   { border: 1.5px solid var(--accent); background: rgba(245,158,11,0.15); }
+  .mat-checkbox--unchecked { border: 1.5px solid var(--border-hi); background: transparent; }
+  .mat-rename-input {
+    flex: 1; background: var(--surface-3); border: 1px solid var(--accent);
+    border-radius: 3px; color: var(--text-hi); padding: 1px 5px;
+    font-size: 11.5px; font-family: var(--font); outline: none;
+  }
+
+  /* ── Resize handle ── */
+  .resize-handle {
+    width: 5px; cursor: col-resize; background: transparent;
+    flex-shrink: 0; transition: background 0.15s; z-index: 5;
+  }
+  .resize-handle:hover { background: rgba(245,158,11,0.2); }
+
+  /* ── Property editor (right panel) ── */
+  .editor       { flex: 1; overflow: auto; background: var(--bg); }
+  .editor-inner { padding: 24px; max-width: 800px; }
+  .editor-cat-label {
+    font-size: 11px; font-weight: 600; color: var(--accent);
+    letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px;
+  }
+  .editor-mat-title { font-size: 24px; font-weight: 700; color: var(--text-hi); letter-spacing: -0.02em; }
+  .editor-mat-desc  { font-size: 13px; color: var(--text-faint); margin-top: 3px; }
+  .editor-multi-badge {
+    font-size: 11px; color: var(--accent); margin-top: 6px;
+    background: var(--accent-08); display: inline-block;
+    padding: 2px 10px; border-radius: 4px;
+  }
+  .editor-empty {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    height: 100%; color: var(--text-ghost); flex-direction: column; gap: 8px;
+  }
+  .editor-empty-text { font-size: 13px; }
+  .editor-empty-hint { font-size: 11px; color: #2a2d38; }
+
+  /* ── Form controls ── */
+  .form-label {
+    display: block; font-size: 11px; font-weight: 600;
+    color: var(--text-faint); letter-spacing: 0.06em;
+    text-transform: uppercase; margin-bottom: 6px;
+  }
+  .form-input {
+    width: 100%; background: var(--surface-3); border: 1px solid var(--border);
+    border-radius: 5px; color: var(--text-hi); padding: 7px 10px;
+    font-size: 13px; font-family: var(--font); outline: none;
+  }
+  .form-input:focus { border-color: var(--border-hi); }
+  .form-select {
+    width: 100%; background: var(--surface-3); border: 1px solid var(--border);
+    border-radius: 5px; color: var(--text-faint);
+    padding: 7px 32px 7px 10px;
+    font-size: 13px; font-family: var(--font); outline: none; cursor: pointer;
+    background-image: var(--arrow-svg);
+    background-repeat: no-repeat; background-position: right 8px center;
+  }
+
+  /* ── Properties table ── */
+  .prop-table {
+    background: var(--surface-2); border-radius: 8px;
+    border: 1px solid var(--border); overflow: hidden;
+  }
+  .prop-table-header,
+  .prop-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 220px 50px 36px;
+    padding: 8px 12px; align-items: center;
+  }
+  .prop-table-header {
+    border-bottom: 1px solid var(--border);
+    font-size: 11px; font-weight: 600; color: var(--text-faint);
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .prop-row { border-bottom: 1px solid #1e2028; transition: background 0.1s; }
+  .prop-row:hover          { background: rgba(255,255,255,0.015); }
+  .prop-row-key    { font-size: 12px; font-weight: 600; color: var(--accent); }
+  .prop-row-name   { font-size: 13px; color: var(--text-muted); }
+  .prop-row-value  {
+    font-size: 13px; color: var(--text-hi); cursor: pointer;
+    padding: 3px 8px; border-radius: 4px;
+    background: var(--surface-3); font-variant-numeric: tabular-nums;
+    width: fit-content;
+  }
+  .prop-row-value:hover { background: var(--surface-4); }
+  .prop-row-unit   { font-size: 11px; color: var(--text-dim); }
+  .prop-row-remove { color: var(--text-ghost); cursor: pointer; display: flex; justify-content: center; }
+  .prop-row-remove:hover { color: var(--text-faint); }
+  .prop-table-hint { font-size: 10px; color: var(--text-ghost); margin-top: 6px; padding: 0 4px; }
+
+  /* ── Add property panel ── */
+  .add-prop-panel {
+    background: var(--surface-3); border-radius: 6px;
+    border: 1px solid var(--border); padding: 8px;
+    margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 4px;
+  }
+  .add-prop-btn {
+    background: var(--border); border: none; color: var(--text-muted);
+    padding: 4px 8px; border-radius: 4px; cursor: pointer;
+    font-size: 11px; font-family: var(--font);
+    transition: background 0.1s, color 0.1s;
+  }
+  .add-prop-btn:hover { background: var(--green); color: var(--green-text); }
+  .add-prop-empty { font-size: 11px; color: var(--text-faint); }
+
+  /* ── Appearance section ── */
+  .appearance-preview { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .appearance-swatch  { width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border); flex-shrink: 0; }
+  .appearance-name    { font-size: 12px; color: var(--text-hi); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .appearance-meta    { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+  .appearance-empty   { font-size: 11px; color: var(--text-dim); font-style: italic; }
+
+  /* ── Unit conversion input ── */
+  .unit-input-wrap { display: flex; gap: 2px; width: 100%; }
+  .unit-input {
+    background: var(--bg); border: 1px solid var(--accent);
+    color: var(--text-hi); padding: 3px 8px;
+    font-size: 12px; font-family: var(--font); outline: none;
+    flex: 1; min-width: 0;
+  }
+  .unit-input--with-select { border-radius: 4px 0 0 4px; }
+  .unit-input--solo        { border-radius: 4px; width: 100%; }
+  .unit-select {
+    background: var(--surface-3); border: 1px solid var(--accent);
+    border-left: none; border-radius: 0 4px 4px 0;
+    color: var(--accent); padding: 3px 6px;
+    font-size: 10px; font-family: var(--font); outline: none; cursor: pointer;
+    min-width: 60px; max-width: 110px;
+  }
+
+  /* ── Footer ── */
+  .footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 16px; background: var(--surface-2);
+    border-top: 1px solid var(--border); flex-shrink: 0;
+    font-size: 10px; color: var(--text-muted);
+  }
+  .footer-link {
+    color: var(--text-muted); text-decoration: none;
+    display: flex; align-items: center; gap: 4px; transition: color 0.15s;
+  }
+  .footer-link:hover { color: var(--text-hi); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useCallback, useEffect, useMemo } = React;
+
+/* =============================================================
+   CONSTANTS
+   ============================================================= */
+
+const KNOWN_PROPS = [
+  { key: "EX",     name: "Elastic modulus",          unit: "N/m\u00B2"    },
+  { key: "EY",     name: "Elastic modulus Y",         unit: "N/m\u00B2"    },
+  { key: "EZ",     name: "Elastic modulus Z",         unit: "N/m\u00B2"    },
+  { key: "NUXY",   name: "Poisson's ratio",           unit: ""             },
+  { key: "NUXZ",   name: "Poisson's ratio XZ",        unit: ""             },
+  { key: "NUYZ",   name: "Poisson's ratio YZ",        unit: ""             },
+  { key: "GXY",    name: "Shear modulus",             unit: "N/m\u00B2"    },
+  { key: "GXZ",    name: "Shear modulus XZ",          unit: "N/m\u00B2"    },
+  { key: "GYZ",    name: "Shear modulus YZ",          unit: "N/m\u00B2"    },
+  { key: "ALPX",   name: "Thermal expansion coeff.",  unit: "/K"           },
+  { key: "ALPY",   name: "Thermal expansion Y",       unit: "/K"           },
+  { key: "ALPZ",   name: "Thermal expansion Z",       unit: "/K"           },
+  { key: "DENS",   name: "Mass density",              unit: "kg/m\u00B3"   },
+  { key: "KX",     name: "Thermal conductivity",      unit: "W/(m\u00B7K)" },
+  { key: "KY",     name: "Thermal conductivity Y",    unit: "W/(m\u00B7K)" },
+  { key: "KZ",     name: "Thermal conductivity Z",    unit: "W/(m\u00B7K)" },
+  { key: "C",      name: "Specific heat",             unit: "J/(kg\u00B7K)"},
+  { key: "SIGXT",  name: "Tensile strength",          unit: "N/m\u00B2"    },
+  { key: "SIGXC",  name: "Compressive strength",      unit: "N/m\u00B2"    },
+  { key: "SIGYLD", name: "Yield strength",            unit: "N/m\u00B2"    },
+];
+
+const PROP_MAP = Object.fromEntries(KNOWN_PROPS.map(p => [p.key, p]));
+
+const UNIT_CONVERSIONS = {
+  "N/m\u00B2": [
+    { label: "N/m\u00B2 (Pa)",           factor: 1              },
+    { label: "kPa",                       factor: 1e3            },
+    { label: "MPa",                       factor: 1e6            },
+    { label: "GPa",                       factor: 1e9            },
+    { label: "psi",                       factor: 6894.757293168 },
+    { label: "ksi",                       factor: 6894757.293168 },
+    { label: "bar",                       factor: 1e5            },
+    { label: "atm",                       factor: 101325         },
+  ],
+  "kg/m\u00B3": [
+    { label: "kg/m\u00B3",               factor: 1              },
+    { label: "g/cm\u00B3",               factor: 1000           },
+    { label: "lb/in\u00B3",              factor: 27679.9047     },
+    { label: "lb/ft\u00B3",              factor: 16.01846       },
+  ],
+  "W/(m\u00B7K)": [
+    { label: "W/(m\u00B7K)",             factor: 1              },
+    { label: "BTU/(hr\u00B7ft\u00B7\u00B0F)", factor: 1.730735  },
+    { label: "cal/(s\u00B7cm\u00B7\u00B0C)", factor: 418.68     },
+  ],
+  "J/(kg\u00B7K)": [
+    { label: "J/(kg\u00B7K)",            factor: 1              },
+    { label: "kJ/(kg\u00B7K)",           factor: 1000           },
+    { label: "BTU/(lb\u00B7\u00B0F)",    factor: 4186.8         },
+    { label: "cal/(g\u00B7\u00B0C)",     factor: 4186.8         },
+  ],
+  "/K": [
+    { label: "/K (\u00B5m/m/\u00B0C)",   factor: 1e-6           },
+    { label: "/K (raw)",                  factor: 1              },
+    { label: "\u00B5in/in/\u00B0F",      factor: 5.55556e-7     },
+  ],
+};
+
+/* =============================================================
+   SOLIDWORKS VERSION PROFILES
+   Each profile controls how the .sldmat XML is generated.
+   Add hook overrides here when per-version differences arise.
+   ============================================================= */
+
+/** XML-escape a string for attribute values. */
+const esc = (s) =>
+  String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+const BASE_PROFILE = {
+  xmlDeclaration: () =>
+    '<?xml version="1.0" encoding="utf-16" standalone="no"?>',
+
+  rootOpen: (ver) =>
+    '<mstns:materials xmlns:mstns="http://www.solidworks.com/sldmaterials"'
+    + ' xmlns:msdata="urn:schemas-microsoft-com:xml-msdata"'
+    + ' xmlns:sldcolorswatch="http://www.solidworks.com/sldcolorswatch"'
+    + ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
+    + ' version="' + ver + '">',
+
+  rootClose: () => '</mstns:materials>',
+
+  curves: () =>
+    '  <curves id="curve0">\r\n'
+    + '    <point x="1.0" y="1.0" />\r\n'
+    + '    <point x="2.0" y="1.0" />\r\n'
+    + '    <point x="3.0" y="1.0" />\r\n'
+    + '  </curves>',
+
+  materialOpen: (mat, matId) =>
+    '    <material name="'        + esc(mat.name)           + '"'
+    + ' description="'           + esc(mat.description)    + '"'
+    + ' matid="'                 + matId                   + '"'
+    + ' propertysource="'        + esc(mat.propertysource) + '"'
+    + ' appdata="'               + esc(mat.appdata)        + '">',
+
+  materialClose: () => '    </material>',
+
+  xhatch: (mat) =>
+    '      <xhatch name="' + esc(mat.xhatch.name)  + '"'
+    + ' angle="'           + mat.xhatch.angle       + '"'
+    + ' scale="'           + mat.xhatch.scale       + '" />',
+
+  shaders: () =>
+    '      <shaders>\r\n'
+    + '        <pwshader2 name="satin finish aluminum"'
+    + ' path="\\metal\\aluminum\\satin finish aluminum.p2m" />\r\n'
+    + '      </shaders>',
+
+  swatchcolor: (mat) =>
+    '      <swatchcolor RGB="' + mat.swatchcolor.rgb + '">\r\n'
+    + '        <sldcolorswatch:Optical'
+    + ' Ambient="1" Transparency="0" Diffuse="1"'
+    + ' Specularity="1" Shininess="0.31" Emission="0" />\r\n'
+    + '      </swatchcolor>',
+
+  physicalPropertiesOpen:  () => '      <physicalproperties>',
+  physicalPropertiesClose: () => '      </physicalproperties>',
+
+  property: (propDef, prop) =>
+    '        <' + propDef.key + ' displayname="' + esc(prop.displayname) + '"'
+    + ' value="' + prop.value + '" />',
+
+  classificationOpen:  (cls) => '  <classification name="' + esc(cls.name) + '">',
+  classificationClose: ()    => '  </classification>',
+};
+
+function makeProfile(overrides) {
+  return { ...BASE_PROFILE, ...overrides };
+}
+
+const SW_VERSIONS = [
+  { label: "SolidWorks 2025",       version: "2025.03", profile: makeProfile({}) },
+];
+
+const SW_VERSION_MAP = Object.fromEntries(SW_VERSIONS.map(v => [v.version, v]));
+
+/* =============================================================
+   UTILITY FUNCTIONS
+   ============================================================= */
+
+function getConversions(propKey) {
+  const def = PROP_MAP[propKey];
+  if (!def || !def.unit) return null;
+  return UNIT_CONVERSIONS[def.unit] ?? null;
+}
+
+function parseInputValue(str) {
+  if (str == null) return NaN;
+  const s = String(str).trim();
+  const n = Number(s);
+  return (!isNaN(n) && s !== "") ? n : NaN;
+}
+
+function formatValue(val) {
+  const n = parseFloat(val);
+  if (isNaN(n)) return val;
+  if (n === 0)  return "0";
+  if (Math.abs(n) >= 1e15 || (Math.abs(n) < 1e-6 && n !== 0)) {
+    return n.toExponential(6);
+  }
+  return n.toLocaleString("en-US", { maximumFractionDigits: 20, useGrouping: false });
+}
+
+function parseSldmat(xmlText) {
+  const doc  = new DOMParser().parseFromString(xmlText, "text/xml");
+  const root = doc.documentElement;
+
+  return [...root.querySelectorAll("classification")].map(cls => ({
+    name: cls.getAttribute("name"),
+    materials: [...cls.querySelectorAll("material")].map(mat => {
+      const material = {
+        id:             crypto.randomUUID(),
+        name:           mat.getAttribute("name")           || "",
+        description:    mat.getAttribute("description")    || "-",
+        matid:          mat.getAttribute("matid")          || "",
+        propertysource: mat.getAttribute("propertysource") || "",
+        appdata:        mat.getAttribute("appdata")        || "",
+        properties:     {},
+        xhatch:         { name: "ANSI 31 (Iron Brickwork)", angle: "0", scale: "1" },
+        shaders:        [],
+        swatchcolor:    { rgb: "E5EAED", optical: {} },
+      };
+
+      const xh = mat.querySelector("xhatch");
+      if (xh) {
+        material.xhatch = {
+          name:  xh.getAttribute("name")  || "",
+          angle: xh.getAttribute("angle") || "0",
+          scale: xh.getAttribute("scale") || "1",
+        };
+      }
+
+      const sc = mat.querySelector("swatchcolor");
+      if (sc) material.swatchcolor.rgb = sc.getAttribute("RGB") || "E5EAED";
+
+      const pp = mat.querySelector("physicalproperties");
+      if (pp) {
+        pp.querySelectorAll("*").forEach(el => {
+          const key = el.tagName;
+          if (PROP_MAP[key]) {
+            material.properties[key] = {
+              displayname: el.getAttribute("displayname") || PROP_MAP[key].name,
+              value:       el.getAttribute("value")       || "0",
+            };
+          }
+        });
+      }
+
+      return material;
+    }),
+  }));
+}
+
+function buildSldmat(classifications, versionStr) {
+  const ver   = versionStr || "2025.03";
+  const p     = (SW_VERSION_MAP[ver] || SW_VERSIONS[0]).profile;
+  const lines = [];
+  let matIdCounter = 0;
+
+  lines.push(p.xmlDeclaration());
+  lines.push(p.rootOpen(ver));
+  lines.push(p.curves());
+
+  for (const cls of classifications) {
+    lines.push(p.classificationOpen(cls));
+    for (const mat of cls.materials) {
+      matIdCounter++;
+      lines.push(p.materialOpen(mat, matIdCounter));
+      lines.push(p.xhatch(mat));
+      lines.push(p.shaders(mat));
+      lines.push(p.swatchcolor(mat));
+      lines.push(p.physicalPropertiesOpen());
+      for (const propDef of KNOWN_PROPS) {
+        const prop = mat.properties[propDef.key];
+        if (prop) lines.push(p.property(propDef, prop));
+      }
+      lines.push(p.physicalPropertiesClose());
+      lines.push(p.materialClose());
+    }
+    lines.push(p.classificationClose());
+  }
+
+  lines.push(p.rootClose());
+  return lines.join('\r\n') + '\r\n';
+}
+
+function sortAlphabetically(data) {
+  return [...data]
+    .map(cat => ({
+      ...cat,
+      materials: [...cat.materials].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+      ),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+}
+
+/* =============================================================
+   ICONS
+   ============================================================= */
+
+const IconChevron = ({ open }) => (
+  <svg
+    width="12" height="12" viewBox="0 0 12 12" fill="none"
+    style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}
+  >
+    <path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+);
+
+const icons = {
+  logo:       <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="2" y="2" width="18" height="18" rx="3" stroke="#f59e0b" strokeWidth="1.5"/><rect x="5" y="5" width="5" height="5" rx="1" fill="#f59e0b" opacity="0.6"/><rect x="12" y="5" width="5" height="5" rx="1" fill="#f59e0b" opacity="0.4"/><rect x="5" y="12" width="5" height="5" rx="1" fill="#f59e0b" opacity="0.3"/><rect x="12" y="12" width="5" height="5" rx="1" fill="#f59e0b" opacity="0.8"/></svg>,
+  logoLg:     <svg width="32" height="32" viewBox="0 0 22 22" fill="none"><rect x="2" y="2" width="18" height="18" rx="3" stroke="#f59e0b" strokeWidth="1.5"/><rect x="5" y="5" width="5" height="5" rx="1" fill="#f59e0b" opacity="0.6"/><rect x="12" y="5" width="5" height="5" rx="1" fill="#f59e0b" opacity="0.4"/><rect x="5" y="12" width="5" height="5" rx="1" fill="#f59e0b" opacity="0.3"/><rect x="12" y="12" width="5" height="5" rx="1" fill="#f59e0b" opacity="0.8"/></svg>,
+  category:   <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 3h5l2 2h5v8H2V3z" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg>,
+  material:   <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.3"/><circle cx="7" cy="7" r="3" stroke="currentColor" strokeWidth="1"/></svg>,
+  plus:       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+  trash:      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 4h8l-.7 8H3.7L3 4zM5.5 2h3M2 4h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
+  exp:        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4 6l3 3 3-3M2 11h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  drag:       <svg width="10" height="14" viewBox="0 0 10 14" fill="none"><circle cx="3" cy="3" r="1.2" fill="currentColor"/><circle cx="7" cy="3" r="1.2" fill="currentColor"/><circle cx="3" cy="7" r="1.2" fill="currentColor"/><circle cx="7" cy="7" r="1.2" fill="currentColor"/><circle cx="3" cy="11" r="1.2" fill="currentColor"/><circle cx="7" cy="11" r="1.2" fill="currentColor"/></svg>,
+  dupe:       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="4" y="4" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M10 4V2.5A1.5 1.5 0 008.5 1h-6A1.5 1.5 0 001 2.5v6A1.5 1.5 0 002.5 10H4" stroke="currentColor" strokeWidth="1.2"/></svg>,
+  search:     <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3"/><path d="M9.5 9.5L13 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
+  github:     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>,
+  check:      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  newFile:    <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><rect x="8" y="4" width="24" height="32" rx="3" stroke="#3a3d48" strokeWidth="2"/><path d="M15 18h10M20 13v10" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round"/></svg>,
+  merge:      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M4 2v4l3 3 3-3V2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M7 9v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
+  collapse:   <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4l5 3 5-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 8l5 3 5-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  save:       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11 13H3a1 1 0 01-1-1V2a1 1 0 011-1h6l3 3v8a1 1 0 01-1 1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M4 9h6M4 11h4" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></svg>,
+  importFile: <svg width="40" height="40" viewBox="0 0 48 48" fill="none"><rect x="6" y="10" width="36" height="32" rx="3" stroke="#3a3d48" strokeWidth="2"/><path d="M16 10V6a2 2 0 012-2h12a2 2 0 012 2v4" stroke="#3a3d48" strokeWidth="2"/><path d="M24 20v14M18 27l6-7 6 7" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+};
+
+/* =============================================================
+   COMPONENT: UnitConvertInput
+   Inline value editor with optional unit-conversion selector.
+   ============================================================= */
+
+function UnitConvertInput({ propKey, value, onCommit }) {
+  const conversions = getConversions(propKey);
+  const hasUnits    = conversions && conversions.length > 1;
+
+  const [inputVal, setInputVal]         = useState(value);
+  const [selectedUnit, setSelectedUnit] = useState(0);
+  const containerRef = useRef(null);
+  const commitRef    = useRef(null);
+
+  // Keep commitRef current so the deferred blur handler reads latest values.
+  useEffect(() => { commitRef.current = { inputVal, selectedUnit }; });
+
+  const doCommit = (iv, su) => {
+    const n = parseInputValue(iv);
+    if (!isNaN(n)) {
+      const factor = hasUnits ? conversions[su].factor : 1;
+      onCommit(String(n * factor));
+    } else {
+      onCommit(iv);
+    }
+  };
+
+  // Only commit when focus truly leaves this component (not just input → select).
+  const handleBlur = () => {
+    setTimeout(() => {
+      if (containerRef.current?.contains(document.activeElement)) return;
+      const { inputVal: iv, selectedUnit: su } = commitRef.current;
+      doCommit(iv, su);
+    }, 0);
+  };
+
+  const handleKeyDown = (su) => (e) => {
+    if (e.key === "Enter")  { e.preventDefault(); doCommit(inputVal, su); }
+    if (e.key === "Escape") { setInputVal(value); onCommit(value); }
+  };
+
+  const handleUnitChange = (newIdx) => {
+    const n = parseInputValue(inputVal);
+    if (!isNaN(n)) {
+      const base      = n * conversions[selectedUnit].factor;
+      const converted = base / conversions[newIdx].factor;
+      setInputVal(String(converted));
+    }
+    setSelectedUnit(newIdx);
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className={hasUnits ? "unit-input-wrap" : undefined}
+      style={hasUnits ? undefined : { width: "100%" }}
+      onBlur={handleBlur}
+    >
+      <input
+        autoFocus
+        value={inputVal}
+        onChange={e => setInputVal(e.target.value)}
+        onKeyDown={handleKeyDown(selectedUnit)}
+        placeholder={hasUnits ? "e.g. 2.1e9 or 210" : "e.g. 2.1e9 or 210000000000"}
+        className={"unit-input " + (hasUnits ? "unit-input--with-select" : "unit-input--solo")}
+      />
+      {hasUnits && (
+        <select
+          value={selectedUnit}
+          onChange={e => handleUnitChange(Number(e.target.value))}
+          className="unit-select"
+        >
+          {conversions.map((c, i) => (
+            <option key={i} value={i}>{c.label}</option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+}
+
+/* =============================================================
+   COMPONENT: AppHeader
+   ============================================================= */
+
+function AppHeader({
+  hasFile, originalFileName, totalMats, dataLength, selectedMatsSize,
+  swVersion, onSwVersionChange,
+  onImport, onExport, onSave, onSaveAs,
+}) {
+  return (
+    <div className="header">
+      <div className="header-left">
+        <div className="header-logo">
+          {icons.logo}
+          <span className="header-title">SLDMAT</span>
+          <span className="header-subtitle">Editor</span>
+        </div>
+        {hasFile && (
+          <span className="header-badge">
+            {originalFileName ?? "New Library"}
+            {" \u00B7 "}{dataLength} categories
+            {" \u00B7 "}{totalMats} materials
+          </span>
+        )}
+        {hasFile && selectedMatsSize > 1 && (
+          <span className="header-selection">{selectedMatsSize} selected</span>
+        )}
+      </div>
+
+      <div className="header-right">
+        <button onClick={onImport} className="btn btn-primary">
+          {hasFile ? "Load Another" : "Import .sldmat"}
+        </button>
+
+        {hasFile && !originalFileName && (
+          <button onClick={onExport} className="btn btn-success">
+            {icons.exp}<span style={{ marginLeft: 4 }}>Export</span>
+          </button>
+        )}
+        {hasFile && originalFileName && (<>
+          <button onClick={onSave} className="btn btn-success">
+            {icons.save}<span style={{ marginLeft: 4 }}>Save</span>
+          </button>
+          <button onClick={onSaveAs} className="btn btn-secondary">
+            {icons.exp}<span style={{ marginLeft: 4 }}>Save As</span>
+          </button>
+        </>)}
+      </div>
+    </div>
+  );
+}
+
+/* =============================================================
+   COMPONENT: LandingPage
+   ============================================================= */
+
+function LandingPage({ onImport, onCreateNew }) {
+  return (
+    <div className="landing">
+      <div style={{ textAlign: "center" }}>
+        <div className="landing-title">
+          {icons.logoLg}
+          <span className="landing-title-text">SLDMAT Editor</span>
+        </div>
+        <div className="landing-subtitle">SolidWorks Material Library Editor</div>
+      </div>
+
+      <div className="landing-cards">
+        <div className="landing-card" onClick={onImport}>
+          {icons.importFile}
+          <div style={{ textAlign: "center" }}>
+            <div className="landing-card-title">Import .sldmat</div>
+            <div className="landing-card-sub">Drop file or click to browse</div>
+          </div>
+          <div className="landing-card-tag">Open an existing library</div>
+        </div>
+
+        <div className="landing-divider">OR</div>
+
+        <div className="landing-card" onClick={onCreateNew}>
+          {icons.newFile}
+          <div style={{ textAlign: "center" }}>
+            <div className="landing-card-title">Create New</div>
+            <div className="landing-card-sub">Start a blank material library</div>
+          </div>
+          <div className="landing-card-tag">Build from scratch</div>
+        </div>
+      </div>
+
+      <a
+        href="https://github.com/chrissank/SolidworksMaterialLibraryEditor"
+        target="_blank" rel="noopener noreferrer"
+        className="landing-github"
+      >
+        {icons.github}
+        <span>github.com/chrissank/SolidworksMaterialLibraryEditor</span>
+      </a>
+    </div>
+  );
+}
+
+/* =============================================================
+   COMPONENT: Sidebar
+   Left-hand category & material tree.
+   ============================================================= */
+
+function Sidebar({
+  sidebarWidth, filteredData, data,
+  expandedCats, setExpandedCats,
+  selectedMats, primaryMat,
+  dragItem, dropTarget,
+  searchQuery, setSearchQuery,
+  editingCat,    setEditingCat,    editingCatName, setEditingCatName,
+  renamingMat,   setRenamingMat,   renamingMatVal, setRenamingMatVal,
+  mergingCat, setMergingCat,
+  onAddCategory, onCollapseAll, onDeleteSelectedMaterials,
+  onAddMaterial, onDeleteCategory, onMergeCategories,
+  onMatClick, onDuplicateMaterial, onDeleteMaterial,
+  onDragStart, onDragEnd, onDragOver, onDragOverCat, onDrop,
+  onCatRenameBlur, onCatRenameKey,
+  onMatRenameBlur, onMatRenameKey,
+}) {
+  return (
+    <div className="sidebar" style={{ width: sidebarWidth }}>
+
+      {/* ── Toolbar ── */}
+      <div className="sidebar-toolbar">
+        <div className="sidebar-search">
+          <span className="sidebar-search-icon">{icons.search}</span>
+          <input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search materials..."
+          />
+          {searchQuery && (
+            <span className="sidebar-search-clear" onClick={() => setSearchQuery("")}>&times;</span>
+          )}
+        </div>
+
+        <div className="sidebar-actions">
+          <button onClick={onAddCategory} className="btn-small" style={{ flex: 1 }}>
+            {icons.plus} Category
+          </button>
+          <button onClick={onCollapseAll} className="btn-small" title="Collapse all categories">
+            {icons.collapse} Collapse
+          </button>
+          {selectedMats.size > 1 && (
+            <button
+              onClick={onDeleteSelectedMaterials}
+              className="btn-small btn-danger"
+              title="Delete selected materials"
+            >
+              {icons.trash} Delete ({selectedMats.size})
+            </button>
+          )}
+        </div>
+
+        {selectedMats.size > 0 && (
+          <div className="sidebar-hint">
+            Ctrl+click to toggle &middot; Shift+click for range
+          </div>
+        )}
+      </div>
+
+      {/* ── Tree ── */}
+      <div
+        className="sidebar-list"
+        onDragOver={e => e.preventDefault()}
+        onClick={() => setMergingCat(null)}
+      >
+        {filteredData.map(cat => {
+          const actualIdx = cat._idx != null ? cat._idx : data.indexOf(cat);
+          const isExpanded = expandedCats[actualIdx] !== false;
+          const isDropCat  = dropTarget?.catIdx === actualIdx && !dropTarget?.matId;
+
+          return (
+            <div key={actualIdx}>
+
+              {/* Category row */}
+              <div
+                onDragOver={e => onDragOverCat(e, actualIdx)}
+                onDrop={e => onDrop(e, actualIdx)}
+                className={"cat-row" + (isDropCat ? " cat-row--drop" : "")}
+                onClick={() => setExpandedCats(e => ({ ...e, [actualIdx]: !isExpanded }))}
+              >
+                <IconChevron open={isExpanded} />
+                <span className="cat-row-icon">{icons.category}</span>
+
+                {editingCat === actualIdx ? (
+                  <input
+                    autoFocus
+                    value={editingCatName}
+                    onChange={e => setEditingCatName(e.target.value)}
+                    onBlur={() => onCatRenameBlur(actualIdx)}
+                    onKeyDown={e => onCatRenameKey(e, actualIdx)}
+                    onClick={e => e.stopPropagation()}
+                    className="cat-rename-input"
+                  />
+                ) : (
+                  <span
+                    className="cat-row-name"
+                    onDoubleClick={e => {
+                      e.stopPropagation();
+                      setEditingCat(actualIdx);
+                      setEditingCatName(cat.name);
+                    }}
+                  >
+                    {cat.name}
+                  </span>
+                )}
+
+                <span className="cat-row-count">{cat.materials.length}</span>
+
+                <span
+                  className="cat-row-action"
+                  onClick={e => { e.stopPropagation(); onAddMaterial(actualIdx); }}
+                  title="Add material"
+                >{icons.plus}</span>
+
+                {data.length > 1 && (
+                  <span
+                    className="cat-row-action"
+                    style={{ color: mergingCat === actualIdx ? "var(--accent)" : undefined }}
+                    onClick={e => { e.stopPropagation(); setMergingCat(mergingCat === actualIdx ? null : actualIdx); }}
+                    title="Merge into another category"
+                  >{icons.merge}</span>
+                )}
+
+                <span
+                  className="cat-row-action"
+                  onClick={e => { e.stopPropagation(); onDeleteCategory(actualIdx); }}
+                  title="Delete category"
+                >{icons.trash}</span>
+              </div>
+
+              {/* Merge dropdown */}
+              {mergingCat === actualIdx && (
+                <div className="merge-dropdown" onClick={e => e.stopPropagation()}>
+                  <div className="merge-dropdown-title">Merge "{cat.name}" into:</div>
+                  {data.map((targetCat, tIdx) => tIdx === actualIdx ? null : (
+                    <div
+                      key={tIdx}
+                      className="merge-item"
+                      onClick={() => onMergeCategories(actualIdx, tIdx)}
+                    >
+                      <span style={{ color: "var(--accent)", display: "flex" }}>{icons.category}</span>
+                      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {targetCat.name}
+                      </span>
+                      <span style={{ fontSize: 10, color: "var(--text-dim)" }}>{targetCat.materials.length}</span>
+                    </div>
+                  ))}
+                  <div className="merge-cancel" onClick={() => setMergingCat(null)}>Cancel</div>
+                </div>
+              )}
+
+              {/* Material rows */}
+              {isExpanded && cat.materials.map(mat => {
+                const isInSelection = selectedMats.has(mat.id);
+                const isPrimary     = primaryMat === mat.id;
+                const isDragging    = dragItem?.matId === mat.id;
+                const isDropHere    = dropTarget?.matId === mat.id;
+
+                let rowClass = "mat-row";
+                if (isPrimary)         rowClass += " mat-row--primary";
+                else if (isInSelection) rowClass += " mat-row--selected";
+                if (isDragging)        rowClass += " mat-row--dragging";
+                if (isDropHere)        rowClass += " mat-row--drop-target";
+
+                return (
+                  <div
+                    key={mat.id}
+                    draggable
+                    className={rowClass}
+                    onDragStart={e => {
+                      if (e.ctrlKey || e.metaKey || e.shiftKey) { e.preventDefault(); return; }
+                      onDragStart(actualIdx, mat.id);
+                    }}
+                    onDragEnd={onDragEnd}
+                    onDragOver={e => onDragOver(e, actualIdx, mat.id)}
+                    onDrop={e => onDrop(e, actualIdx)}
+                    onClick={e => onMatClick(actualIdx, mat.id, e)}
+                  >
+                    <span className="mat-row-drag">{icons.drag}</span>
+
+                    {selectedMats.size > 1 && (
+                      <span className={"mat-checkbox " + (isInSelection ? "mat-checkbox--checked" : "mat-checkbox--unchecked")}>
+                        {isInSelection && <span style={{ color: "var(--accent)" }}>{icons.check}</span>}
+                      </span>
+                    )}
+
+                    <span className={"mat-row-icon " + (isInSelection ? "mat-row-icon--selected" : "mat-row-icon--default")}>
+                      {icons.material}
+                    </span>
+
+                    {renamingMat === mat.id ? (
+                      <input
+                        autoFocus
+                        value={renamingMatVal}
+                        onChange={e => setRenamingMatVal(e.target.value)}
+                        onBlur={() => onMatRenameBlur(actualIdx, mat.id)}
+                        onKeyDown={e => onMatRenameKey(e, actualIdx, mat.id)}
+                        onClick={e => e.stopPropagation()}
+                        className="mat-rename-input"
+                      />
+                    ) : (
+                      <span
+                        className={"mat-row-name " + (isInSelection ? "mat-row-name--selected" : "mat-row-name--default")}
+                        onDoubleClick={e => {
+                          e.stopPropagation();
+                          setRenamingMat(mat.id);
+                          setRenamingMatVal(mat.name);
+                        }}
+                      >
+                        {mat.name}
+                      </span>
+                    )}
+
+                    <span
+                      className="mat-row-action"
+                      onClick={e => { e.stopPropagation(); onDuplicateMaterial(actualIdx, mat.id); }}
+                      title="Duplicate"
+                    >{icons.dupe}</span>
+                    <span
+                      className="mat-row-action"
+                      onClick={e => { e.stopPropagation(); onDeleteMaterial(actualIdx, mat.id); }}
+                      title="Delete"
+                    >{icons.trash}</span>
+                  </div>
+                );
+              })}
+
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* =============================================================
+   COMPONENT: MaterialEditor
+   Right-hand property editor panel.
+   ============================================================= */
+
+function MaterialEditor({
+  selMat, primaryCatIdx, data, selectedMatsSize,
+  editingProp, setEditingProp,
+  showAddProp, setShowAddProp,
+  uniqueAppearances,
+  onUpdateDescription, onUpdateProp, onAddProp, onRemoveProp, onApplyAppearance,
+}) {
+  if (!selMat) {
+    return (
+      <div className="editor-empty">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+          <rect x="4" y="4" width="32" height="32" rx="4" stroke="#2a2d38" strokeWidth="1.5" strokeDasharray="4 3" />
+          <path d="M15 20h10M20 15v10" stroke="#2a2d38" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+        <span className="editor-empty-text">Select a material to edit</span>
+        <span className="editor-empty-hint">
+          Double-click names to rename &middot; Ctrl/Shift+click to multi-select &middot; Drag to reorganize
+        </span>
+      </div>
+    );
+  }
+
+  const availableProps = KNOWN_PROPS.filter(p => !selMat.properties[p.key]);
+
+  return (
+    <div className="editor-inner">
+
+      {/* ── Material header ── */}
+      <div style={{ marginBottom: 22 }}>
+        <div className="editor-cat-label">{data[primaryCatIdx]?.name}</div>
+        <div className="editor-mat-title">{selMat.name}</div>
+        {selMat.description && selMat.description !== "-" && (
+          <div className="editor-mat-desc">{selMat.description}</div>
+        )}
+        {selectedMatsSize > 1 && (
+          <div className="editor-multi-badge">
+            Editing primary selection &middot; {selectedMatsSize} materials selected
+          </div>
+        )}
+      </div>
+
+      {/* ── Description ── */}
+      <div style={{ marginBottom: 20 }}>
+        <label className="form-label">Description</label>
+        <input
+          value={selMat.description}
+          onChange={e => onUpdateDescription(e.target.value)}
+          className="form-input"
+        />
+      </div>
+
+      {/* ── Physical properties ── */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <label className="form-label" style={{ margin: 0 }}>Physical Properties</label>
+          <button onClick={() => setShowAddProp(!showAddProp)} className="btn-small">
+            {icons.plus} Add Property
+          </button>
+        </div>
+
+        {showAddProp && (
+          <div className="add-prop-panel">
+            {availableProps.length > 0
+              ? availableProps.map(p => (
+                  <button key={p.key} onClick={() => onAddProp(p.key)} className="add-prop-btn">
+                    {p.key}: {p.name}
+                  </button>
+                ))
+              : <span className="add-prop-empty">All properties already added</span>
+            }
+          </div>
+        )}
+
+        <div className="prop-table">
+          <div className="prop-table-header">
+            <span>Key</span><span>Property</span><span>Value</span><span>Unit</span><span></span>
+          </div>
+          {KNOWN_PROPS.filter(p => selMat.properties[p.key]).map(propDef => {
+            const prop      = selMat.properties[propDef.key];
+            const isEditing = editingProp === propDef.key;
+            return (
+              <div key={propDef.key} className="prop-row">
+                <span className="prop-row-key">{propDef.key}</span>
+                <span className="prop-row-name">{prop.displayname}</span>
+                {isEditing ? (
+                  <UnitConvertInput
+                    propKey={propDef.key}
+                    value={prop.value}
+                    onCommit={val => { onUpdateProp(propDef.key, val); setEditingProp(null); }}
+                  />
+                ) : (
+                  <span
+                    className="prop-row-value"
+                    onClick={() => setEditingProp(propDef.key)}
+                    title={"Raw: " + prop.value + "\nClick to edit \u2014 supports scientific notation (e.g. 2.1e9)"}
+                  >
+                    {formatValue(prop.value)}
+                  </span>
+                )}
+                <span className="prop-row-unit">{propDef.unit}</span>
+                <span
+                  className="prop-row-remove"
+                  onClick={() => onRemoveProp(propDef.key)}
+                  title="Remove property"
+                >{icons.trash}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="prop-table-hint">
+          Accepts scientific notation (e.g. 2.1e9) &middot; Click a value to edit with unit conversion
+        </div>
+      </div>
+
+      {/* ── Appearance ── */}
+      <div style={{ marginTop: 16 }}>
+        <label className="form-label">Appearance</label>
+        <div className="appearance-preview">
+          <div className="appearance-swatch" style={{ background: "#" + selMat.swatchcolor.rgb }} />
+          <span className="appearance-name">{selMat.xhatch.name || "None"}</span>
+          <span className="appearance-meta">
+            {selMat.xhatch.angle}&deg; &middot; {selMat.xhatch.scale}x &middot; #{selMat.swatchcolor.rgb}
+          </span>
+        </div>
+        {uniqueAppearances.length > 0 ? (
+          <select
+            value=""
+            onChange={e => {
+              const app = uniqueAppearances.find(a => a.key === e.target.value);
+              if (app) onApplyAppearance(app);
+            }}
+            className="form-select"
+          >
+            <option value="" disabled>Copy from existing appearance...</option>
+            {uniqueAppearances.map(app => (
+              <option key={app.key} value={app.key}>
+                {app.label} &mdash; #{app.swatchcolor.rgb} ({app.usedBy.length} material{app.usedBy.length !== 1 ? 's' : ''})
+              </option>
+            ))}
+          </select>
+        ) : (
+          <div className="appearance-empty">
+            No appearances available &mdash; import a library to copy from
+          </div>
+        )}
+      </div>
+
+    </div>
+  );
+}
+
+/* =============================================================
+   COMPONENT: App  —  state & event handlers
+   ============================================================= */
+
+function App() {
+
+  /* ── State ── */
+  const [data, setData]                         = useState([]);
+  const [selectedMats, setSelectedMats]         = useState(new Set());
+  const [primaryMat, setPrimaryMat]             = useState(null);
+  const [primaryCatIdx, setPrimaryCatIdx]       = useState(null);
+  const [expandedCats, setExpandedCats]         = useState({});
+  const [dragItem, setDragItem]                 = useState(null);
+  const [dropTarget, setDropTarget]             = useState(null);
+  const [searchQuery, setSearchQuery]           = useState("");
+  const [editingCat, setEditingCat]             = useState(null);
+  const [editingCatName, setEditingCatName]     = useState("");
+  const [hasFile, setHasFile]                   = useState(false);
+  const [originalFileName, setOriginalFileName] = useState(null);
+  const [toast, setToast]                       = useState(null);
+  const [editingProp, setEditingProp]           = useState(null);
+  const [showAddProp, setShowAddProp]           = useState(false);
+  const [renamingMat, setRenamingMat]           = useState(null);
+  const [renamingMatVal, setRenamingMatVal]     = useState("");
+  const [lastClickedMat, setLastClickedMat]     = useState(null);
+  const [mergingCat, setMergingCat]             = useState(null);
+  const [swVersion, setSwVersion]               = useState("2025.03");
+  const [sidebarWidth, setSidebarWidth]         = useState(320);
+
+  const isResizing = useRef(false);
+  const fileRef    = useRef();
+  const toastTimer = useRef();
+
+  /* ── Helpers ── */
+
+  const setDataSorted = (updater) => {
+    setData(d => {
+      const raw = typeof updater === 'function' ? updater(d) : updater;
+      return sortAlphabetically(raw);
+    });
+  };
+
+  const showToast = (msg) => {
+    setToast(msg);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 2500);
+  };
+
+  const collapseAll = () => {
+    const exp = {};
+    data.forEach((_, i) => { exp[i] = false; });
+    setExpandedCats(exp);
+  };
+
+  const getSelectedMaterial = () => {
+    if (primaryCatIdx == null || !primaryMat) return null;
+    return data[primaryCatIdx]?.materials.find(m => m.id === primaryMat) ?? null;
+  };
+
+  /* ── Keep primaryCatIdx in sync when data re-sorts ── */
+  useEffect(() => {
+    if (!primaryMat || data.length === 0) return;
+    for (let ci = 0; ci < data.length; ci++) {
+      if (data[ci].materials.find(m => m.id === primaryMat)) {
+        if (ci !== primaryCatIdx) setPrimaryCatIdx(ci);
+        return;
+      }
+    }
+  }, [data, primaryMat]);
+
+  /* ── Sidebar resize ── */
+  const handleResizeStart = useCallback((e) => {
+    e.preventDefault();
+    isResizing.current = true;
+    const startX = e.clientX;
+    const startW = sidebarWidth;
+
+    const onMove = (ev) => {
+      if (!isResizing.current) return;
+      setSidebarWidth(Math.max(220, Math.min(600, startW + ev.clientX - startX)));
+    };
+    const onUp = () => {
+      isResizing.current = false;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor     = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.body.style.cursor     = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, [sidebarWidth]);
+
+  /* ── File I/O ── */
+
+  const handleFileLoad = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const arr = new Uint8Array(ev.target.result);
+        let text;
+        if      (arr[0] === 0xFF && arr[1] === 0xFE) text = new TextDecoder("utf-16le").decode(ev.target.result);
+        else if (arr[0] === 0xFE && arr[1] === 0xFF) text = new TextDecoder("utf-16be").decode(ev.target.result);
+        else                                          text = new TextDecoder("utf-8").decode(ev.target.result);
+        if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); // strip BOM
+
+        const parsed = parseSldmat(text);
+        const sorted = sortAlphabetically(parsed);
+        const exp    = {};
+        sorted.forEach((_, i) => (exp[i] = true));
+
+        setData(sorted);
+        setHasFile(true);
+        setOriginalFileName(file.name);
+        setSelectedMats(new Set());
+        setPrimaryMat(null);
+        setPrimaryCatIdx(null);
+        setExpandedCats(exp);
+        showToast(
+          "Loaded " + parsed.reduce((s, c) => s + c.materials.length, 0) +
+          " materials in " + parsed.length + " categories"
+        );
+      } catch (err) {
+        showToast("Error parsing file: " + err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleCreateNew = () => {
+    setData([{ name: "Custom Materials", materials: [] }]);
+    setHasFile(true);
+    setOriginalFileName(null);
+    setSelectedMats(new Set());
+    setPrimaryMat(null);
+    setPrimaryCatIdx(null);
+    setExpandedCats({ 0: true });
+    showToast("New library created \u2014 add categories and materials to get started");
+  };
+
+  const downloadFile = (filename) => {
+    const xml   = buildSldmat(data, swVersion);
+    const bom   = new Uint8Array([0xFF, 0xFE]);
+    const utf16 = new Uint8Array(xml.length * 2);
+    for (let i = 0; i < xml.length; i++) {
+      const code = xml.charCodeAt(i);
+      utf16[i * 2]     = code & 0xFF;
+      utf16[i * 2 + 1] = (code >> 8) & 0xFF;
+    }
+    const blob = new Blob([bom, utf16], { type: "application/octet-stream" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleSave = () => {
+    if (!originalFileName) return;
+    downloadFile(originalFileName);
+    showToast('Saved "' + originalFileName + '"');
+  };
+
+  const handleSaveAs = () => {
+    const name = prompt("Save as:", originalFileName || "Custom_matls.sldmat");
+    if (!name) return;
+    const finalName = name.endsWith(".sldmat") ? name : name + ".sldmat";
+    downloadFile(finalName);
+    setOriginalFileName(finalName);
+    showToast('Saved as "' + finalName + '"');
+  };
+
+  const handleExport = () => {
+    const name = prompt("Export as:", "Custom_matls.sldmat");
+    if (!name) return;
+    const finalName = name.endsWith(".sldmat") ? name : name + ".sldmat";
+    downloadFile(finalName);
+    setOriginalFileName(finalName);
+    showToast('Exported "' + finalName + '"');
+  };
+
+  /* ── Category operations ── */
+
+  const addCategory = () => {
+    setData(d => [...d, { name: "New Category", materials: [] }]);
+    setExpandedCats(e => ({ ...e, [data.length]: true }));
+    setEditingCat(data.length);
+    setEditingCatName("New Category");
+    showToast("Category created");
+  };
+
+  const deleteCategory = (idx) => {
+    if (!confirm('Delete "' + data[idx].name + '" and all its materials?')) return;
+    setData(d => d.filter((_, i) => i !== idx));
+    if (primaryCatIdx === idx) {
+      setPrimaryCatIdx(null);
+      setPrimaryMat(null);
+      setSelectedMats(new Set());
+    }
+    showToast("Category deleted");
+  };
+
+  const mergeCategories = (sourceIdx, targetIdx) => {
+    if (sourceIdx === targetIdx) return;
+    const sourceName = data[sourceIdx].name;
+    const targetName = data[targetIdx].name;
+    setDataSorted(d => {
+      const nd = [...d];
+      nd[targetIdx] = { ...nd[targetIdx], materials: [...nd[targetIdx].materials, ...nd[sourceIdx].materials] };
+      return nd.filter((_, i) => i !== sourceIdx);
+    });
+    setExpandedCats(e => {
+      const ne = {};
+      for (let i = 0; i < data.length; i++) ne[i] = true;
+      return ne;
+    });
+    setMergingCat(null);
+    showToast('Merged "' + sourceName + '" into "' + targetName + '"');
+  };
+
+  const onCatRenameBlur = (idx) => {
+    setDataSorted(d => {
+      const nd = [...d];
+      nd[idx] = { ...nd[idx], name: editingCatName };
+      return nd;
+    });
+    setEditingCat(null);
+    setExpandedCats(e => {
+      const ne = {};
+      for (let i = 0; i < data.length; i++) ne[i] = true;
+      return ne;
+    });
+  };
+
+  const onCatRenameKey = (e, idx) => {
+    if (e.key === "Enter")  e.target.blur();
+    if (e.key === "Escape") setEditingCat(null);
+  };
+
+  /* ── Material operations ── */
+
+  const addMaterial = (catIdx) => {
+    const newMat = {
+      id: crypto.randomUUID(), name: "New Material", description: "-",
+      matid: "", propertysource: "", appdata: "",
+      properties: {
+        EX:     { displayname: "Elastic modulus",  value: "0" },
+        NUXY:   { displayname: "Poisson's ratio",  value: "0" },
+        DENS:   { displayname: "Mass density",     value: "0" },
+        SIGXT:  { displayname: "Tensile strength", value: "0" },
+        SIGYLD: { displayname: "Yield strength",   value: "0" },
+      },
+      xhatch:      { name: "ANSI 31 (Iron Brickwork)", angle: "0", scale: "1" },
+      shaders:     [],
+      swatchcolor: { rgb: "E5EAED", optical: {} },
+    };
+    setDataSorted(d => {
+      const nd = [...d];
+      nd[catIdx] = { ...nd[catIdx], materials: [...nd[catIdx].materials, newMat] };
+      return nd;
+    });
+    setExpandedCats(e => ({ ...e, [catIdx]: true }));
+    setSelectedMats(new Set([newMat.id]));
+    setPrimaryMat(newMat.id);
+    showToast("Material added");
+  };
+
+  const deleteMaterial = (catIdx, matId) => {
+    setData(d => {
+      const nd = [...d];
+      nd[catIdx] = { ...nd[catIdx], materials: nd[catIdx].materials.filter(m => m.id !== matId) };
+      return nd;
+    });
+    setSelectedMats(s => { const ns = new Set(s); ns.delete(matId); return ns; });
+    if (primaryMat === matId) setPrimaryMat(null);
+    showToast("Material deleted");
+  };
+
+  const deleteSelectedMaterials = () => {
+    if (selectedMats.size === 0) return;
+    const count = selectedMats.size;
+    if (!confirm('Delete ' + count + ' selected material' + (count > 1 ? 's' : '') + '?')) return;
+    setData(d => d.map(cat => ({
+      ...cat,
+      materials: cat.materials.filter(m => !selectedMats.has(m.id)),
+    })));
+    setSelectedMats(new Set());
+    setPrimaryMat(null);
+    showToast(count + " material" + (count > 1 ? "s" : "") + " deleted");
+  };
+
+  const duplicateMaterial = (catIdx, matId) => {
+    const mat = data[catIdx].materials.find(m => m.id === matId);
+    if (!mat) return;
+    const clone  = JSON.parse(JSON.stringify(mat));
+    clone.id     = crypto.randomUUID();
+    clone.name   = mat.name + " (Copy)";
+    setDataSorted(d => {
+      const nd   = [...d];
+      const idx  = nd[catIdx].materials.findIndex(m => m.id === matId);
+      const mats = [...nd[catIdx].materials];
+      mats.splice(idx + 1, 0, clone);
+      nd[catIdx] = { ...nd[catIdx], materials: mats };
+      return nd;
+    });
+    showToast("Material duplicated");
+  };
+
+  const updateMatField = (field, value) => {
+    setData(d => {
+      const nd = [...d];
+      nd[primaryCatIdx] = {
+        ...nd[primaryCatIdx],
+        materials: nd[primaryCatIdx].materials.map(m =>
+          m.id === primaryMat ? { ...m, [field]: value } : m
+        ),
+      };
+      return nd;
+    });
+  };
+
+  const updateMaterialProp = (catIdx, matId, propKey, value) => {
+    setData(d => {
+      const nd = [...d];
+      nd[catIdx] = {
+        ...nd[catIdx],
+        materials: nd[catIdx].materials.map(m =>
+          m.id !== matId ? m : {
+            ...m,
+            properties: { ...m.properties, [propKey]: { ...m.properties[propKey], value } },
+          }
+        ),
+      };
+      return nd;
+    });
+  };
+
+  const addPropertyToMaterial = (catIdx, matId, propKey) => {
+    const def = PROP_MAP[propKey];
+    if (!def) return;
+    setData(d => {
+      const nd = [...d];
+      nd[catIdx] = {
+        ...nd[catIdx],
+        materials: nd[catIdx].materials.map(m =>
+          m.id !== matId ? m : {
+            ...m,
+            properties: { ...m.properties, [propKey]: { displayname: def.name, value: "0" } },
+          }
+        ),
+      };
+      return nd;
+    });
+    setShowAddProp(false);
+    showToast("Added " + def.name);
+  };
+
+  const removePropertyFromMaterial = (catIdx, matId, propKey) => {
+    setData(d => {
+      const nd = [...d];
+      nd[catIdx] = {
+        ...nd[catIdx],
+        materials: nd[catIdx].materials.map(m => {
+          if (m.id !== matId) return m;
+          const np = { ...m.properties };
+          delete np[propKey];
+          return { ...m, properties: np };
+        }),
+      };
+      return nd;
+    });
+    showToast("Property removed");
+  };
+
+  const applyAppearance = (appearance) => {
+    setData(d => {
+      const nd = [...d];
+      nd[primaryCatIdx] = {
+        ...nd[primaryCatIdx],
+        materials: nd[primaryCatIdx].materials.map(m =>
+          m.id !== primaryMat ? m : {
+            ...m,
+            xhatch:      JSON.parse(JSON.stringify(appearance.xhatch)),
+            shaders:     JSON.parse(JSON.stringify(appearance.shaders)),
+            swatchcolor: JSON.parse(JSON.stringify(appearance.swatchcolor)),
+          }
+        ),
+      };
+      return nd;
+    });
+    showToast('Applied appearance: ' + (appearance.xhatch.name || 'Default'));
+  };
+
+  const onMatRenameBlur = (catIdx, matId) => {
+    setDataSorted(d => {
+      const nd = [...d];
+      nd[catIdx] = {
+        ...nd[catIdx],
+        materials: nd[catIdx].materials.map(m =>
+          m.id === matId ? { ...m, name: renamingMatVal } : m
+        ),
+      };
+      return nd;
+    });
+    setRenamingMat(null);
+  };
+
+  const onMatRenameKey = (e) => {
+    if (e.key === "Enter")  e.target.blur();
+    if (e.key === "Escape") setRenamingMat(null);
+  };
+
+  /* ── Selection ── */
+
+  const flatMatList = useMemo(() => {
+    const list = [];
+    data.forEach((cat, catIdx) => {
+      if (expandedCats[catIdx] !== false) {
+        cat.materials.forEach(mat => {
+          if (!searchQuery || mat.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+            list.push({ catIdx, matId: mat.id });
+          }
+        });
+      }
+    });
+    return list;
+  }, [data, expandedCats, searchQuery]);
+
+  const handleMatClick = (catIdx, matId, e) => {
+    if (e.shiftKey && lastClickedMat) {
+      const startIdx = flatMatList.findIndex(f => f.matId === lastClickedMat);
+      const endIdx   = flatMatList.findIndex(f => f.matId === matId);
+      if (startIdx >= 0 && endIdx >= 0) {
+        const lo     = Math.min(startIdx, endIdx);
+        const hi     = Math.max(startIdx, endIdx);
+        const newSet = new Set(selectedMats);
+        for (let i = lo; i <= hi; i++) newSet.add(flatMatList[i].matId);
+        setSelectedMats(newSet);
+        setPrimaryMat(matId);
+        setPrimaryCatIdx(catIdx);
+        setEditingProp(null);
+        setShowAddProp(false);
+        return;
+      }
+    }
+
+    if (e.ctrlKey || e.metaKey) {
+      const newSet = new Set(selectedMats);
+      if (newSet.has(matId)) {
+        newSet.delete(matId);
+        if (primaryMat === matId) {
+          const remaining = [...newSet];
+          if (remaining.length > 0) {
+            const last = remaining[remaining.length - 1];
+            setPrimaryMat(last);
+            for (let ci = 0; ci < data.length; ci++) {
+              if (data[ci].materials.find(m => m.id === last)) { setPrimaryCatIdx(ci); break; }
+            }
+          } else {
+            setPrimaryMat(null);
+            setPrimaryCatIdx(null);
+          }
+        }
+      } else {
+        newSet.add(matId);
+        setPrimaryMat(matId);
+        setPrimaryCatIdx(catIdx);
+      }
+      setSelectedMats(newSet);
+      setLastClickedMat(matId);
+      setEditingProp(null);
+      setShowAddProp(false);
+      return;
+    }
+
+    // Normal single click
+    setSelectedMats(new Set([matId]));
+    setPrimaryMat(matId);
+    setPrimaryCatIdx(catIdx);
+    setLastClickedMat(matId);
+    setEditingProp(null);
+    setShowAddProp(false);
+  };
+
+  /* ── Drag & drop ── */
+
+  const handleDragStart   = (catIdx, matId)               => setDragItem({ catIdx, matId });
+  const handleDragOver    = (e, targetCatIdx, targetMatId) => { e.preventDefault(); setDropTarget({ catIdx: targetCatIdx, matId: targetMatId }); };
+  const handleDragOverCat = (e, targetCatIdx)              => { e.preventDefault(); setDropTarget({ catIdx: targetCatIdx, matId: null }); };
+  const handleDragEnd     = ()                             => { setDragItem(null); setDropTarget(null); };
+
+  const handleDrop = (e, targetCatIdx) => {
+    e.preventDefault();
+    if (!dragItem) return;
+    const { catIdx: srcCat, matId } = dragItem;
+    const mat = data[srcCat].materials.find(m => m.id === matId);
+    if (!mat) return;
+    setDataSorted(d => {
+      const nd = [...d];
+      nd[srcCat]       = { ...nd[srcCat],       materials: nd[srcCat].materials.filter(m => m.id !== matId) };
+      nd[targetCatIdx] = { ...nd[targetCatIdx], materials: [...nd[targetCatIdx].materials, mat] };
+      return nd;
+    });
+    setExpandedCats(e => ({ ...e, [targetCatIdx]: true }));
+    setDragItem(null);
+    setDropTarget(null);
+    showToast('Moved "' + mat.name + '" \u2192 "' + data[targetCatIdx].name + '"');
+  };
+
+  /* ── Derived data ── */
+
+  const filteredData = searchQuery
+    ? data
+        .map((cat, i) => ({
+          ...cat, _idx: i,
+          materials: cat.materials.filter(m =>
+            m.name.toLowerCase().includes(searchQuery.toLowerCase())
+          ),
+        }))
+        .filter(cat =>
+          cat.materials.length > 0 ||
+          cat.name.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+    : data.map((cat, i) => ({ ...cat, _idx: i }));
+
+  const uniqueAppearances = useMemo(() => {
+    const seen = new Map();
+    data.forEach(cat => {
+      cat.materials.forEach(mat => {
+        const key = [mat.xhatch.name, mat.xhatch.angle, mat.xhatch.scale, mat.swatchcolor.rgb].join('|');
+        if (!seen.has(key)) {
+          seen.set(key, {
+            key,
+            xhatch:      mat.xhatch,
+            shaders:     mat.shaders,
+            swatchcolor: mat.swatchcolor,
+            label:       mat.xhatch.name || 'Default',
+            usedBy:      [mat.name],
+          });
+        } else {
+          seen.get(key).usedBy.push(mat.name);
+        }
+      });
+    });
+    return [...seen.values()].sort((a, b) =>
+      a.label.localeCompare(b.label, undefined, { sensitivity: 'base' })
+    );
+  }, [data]);
+
+  const selMat    = getSelectedMaterial();
+  const totalMats = data.reduce((s, c) => s + c.materials.length, 0);
+
+  /* ── Render ── */
+
+  return (
+    <div className="app">
+      {toast && <div className="toast">{toast}</div>}
+
+      <AppHeader
+        hasFile={hasFile}
+        originalFileName={originalFileName}
+        totalMats={totalMats}
+        dataLength={data.length}
+        selectedMatsSize={selectedMats.size}
+        swVersion={swVersion}
+        onSwVersionChange={setSwVersion}
+        onImport={() => fileRef.current?.click()}
+        onExport={handleExport}
+        onSave={handleSave}
+        onSaveAs={handleSaveAs}
+      />
+
+      <input ref={fileRef} type="file" accept=".sldmat,.xml" onChange={handleFileLoad} style={{ display: "none" }} />
+
+      {!hasFile ? (
+        <LandingPage
+          onImport={() => fileRef.current?.click()}
+          onCreateNew={handleCreateNew}
+        />
+      ) : (
+        <div className="main">
+          <Sidebar
+            sidebarWidth={sidebarWidth}
+            filteredData={filteredData}
+            data={data}
+            expandedCats={expandedCats}
+            setExpandedCats={setExpandedCats}
+            selectedMats={selectedMats}
+            primaryMat={primaryMat}
+            dragItem={dragItem}
+            dropTarget={dropTarget}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            editingCat={editingCat}
+            setEditingCat={setEditingCat}
+            editingCatName={editingCatName}
+            setEditingCatName={setEditingCatName}
+            renamingMat={renamingMat}
+            setRenamingMat={setRenamingMat}
+            renamingMatVal={renamingMatVal}
+            setRenamingMatVal={setRenamingMatVal}
+            mergingCat={mergingCat}
+            setMergingCat={setMergingCat}
+            onAddCategory={addCategory}
+            onCollapseAll={collapseAll}
+            onDeleteSelectedMaterials={deleteSelectedMaterials}
+            onAddMaterial={addMaterial}
+            onDeleteCategory={deleteCategory}
+            onMergeCategories={mergeCategories}
+            onMatClick={handleMatClick}
+            onDuplicateMaterial={duplicateMaterial}
+            onDeleteMaterial={deleteMaterial}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragOver={handleDragOver}
+            onDragOverCat={handleDragOverCat}
+            onDrop={handleDrop}
+            onCatRenameBlur={onCatRenameBlur}
+            onCatRenameKey={onCatRenameKey}
+            onMatRenameBlur={onMatRenameBlur}
+            onMatRenameKey={onMatRenameKey}
+          />
+
+          <div className="resize-handle" onMouseDown={handleResizeStart} />
+
+          <div className="editor">
+            <MaterialEditor
+              selMat={selMat}
+              primaryCatIdx={primaryCatIdx}
+              data={data}
+              selectedMatsSize={selectedMats.size}
+              editingProp={editingProp}
+              setEditingProp={setEditingProp}
+              showAddProp={showAddProp}
+              setShowAddProp={setShowAddProp}
+              uniqueAppearances={uniqueAppearances}
+              onUpdateDescription={val => updateMatField("description", val)}
+              onUpdateProp={(propKey, val) => updateMaterialProp(primaryCatIdx, primaryMat, propKey, val)}
+              onAddProp={propKey => addPropertyToMaterial(primaryCatIdx, primaryMat, propKey)}
+              onRemoveProp={propKey => removePropertyFromMaterial(primaryCatIdx, primaryMat, propKey)}
+              onApplyAppearance={applyAppearance}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="footer">
+        <span>SolidWorks Material Library Editor</span>
+        <a
+          href="https://github.com/chrissank/SolidworksMaterialLibraryEditor"
+          target="_blank" rel="noopener noreferrer"
+          className="footer-link"
+        >
+          {icons.github}<span>chrissank/SolidworksMaterialLibraryEditor</span>
+        </a>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
