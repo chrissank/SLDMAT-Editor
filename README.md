@@ -1,6 +1,6 @@
 # SLDMAT Editor
 
-A browser-based editor for SolidWorks material library files (`.sldmat`). No installation, no build step — open the HTML file and go.
+A browser-based editor for SolidWorks material library files (`.sldmat`). No installation, no build step — use it online or download the HTML file and open it locally.
 
 ## Usage
 
