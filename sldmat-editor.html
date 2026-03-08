@@ -891,12 +891,12 @@ function LandingPage({ onImport, onCreateNew }) {
       </div>
 
       <a
-        href="https://github.com/chrissank/SolidworksMaterialLibraryEditor"
+        href="https://github.com/chrissank/SLDMAT-Editor"
         target="_blank" rel="noopener noreferrer"
         className="landing-github"
       >
         {icons.github}
-        <span>github.com/chrissank/SolidworksMaterialLibraryEditor</span>
+        <span>github.com/chrissank/SLDMAT-Editor</span>
       </a>
     </div>
   );
@@ -1323,7 +1323,17 @@ function App() {
   const [renamingMatVal, setRenamingMatVal]     = useState("");
   const [lastClickedMat, setLastClickedMat]     = useState(null);
   const [mergingCat, setMergingCat]             = useState(null);
-  const [swVersion, setSwVersion]               = useState("2025.03");
+  const [swVersion, setSwVersion]               = useState(() => {
+    const param = new URLSearchParams(window.location.search).get('version');
+    if (param) {
+      // exact match first (e.g. "2025.03"), then year-prefix match (e.g. "2025")
+      const exact = SW_VERSIONS.find(v => v.version === param);
+      if (exact) return exact.version;
+      const prefix = SW_VERSIONS.find(v => v.version.startsWith(param + '.'));
+      if (prefix) return prefix.version;
+    }
+    return SW_VERSIONS[0].version;
+  });
   const [sidebarWidth, setSidebarWidth]         = useState(320);
 
   const isResizing = useRef(false);
@@ -1949,11 +1959,11 @@ function App() {
       <div className="footer">
         <span>SolidWorks Material Library Editor</span>
         <a
-          href="https://github.com/chrissank/SolidworksMaterialLibraryEditor"
+          href="https://github.com/chrissank/SLDMAT-Editor"
           target="_blank" rel="noopener noreferrer"
           className="footer-link"
         >
-          {icons.github}<span>chrissank/SolidworksMaterialLibraryEditor</span>
+          {icons.github}<span>chrissank/SLDMAT-Editor</span>
         </a>
       </div>
     </div>

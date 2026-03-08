@@ -4,7 +4,15 @@ A browser-based editor for SolidWorks material library files (`.sldmat`). No ins
 
 ## Usage
 
-Open `sldmat-editor.html` in any modern browser. From the landing page:
+Open the editor for your SolidWorks version:
+
+- [SolidWorks 2025](https://sldmateditor.csankey.com/sldmat-editor.html?version=2025)
+
+If no version is specified, the latest supported version is selected automatically: [open editor](https://sldmateditor.csankey.com/sldmat-editor.html)
+
+To use offline, download `sldmat-editor.html` from this repo and open it in any modern browser — no server or internet connection required.
+
+From the landing page:
 
 - **Import .sldmat** — load an existing SolidWorks material library
 - **Create New** — start a blank library from scratch
