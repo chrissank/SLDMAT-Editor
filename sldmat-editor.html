@@ -4,16 +4,16 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>SLDMAT Editor</title>
-<meta name="description" content="Browser-based editor for SolidWorks material library files (.sldmat). No install required." />
+<meta name="description" content="Browser-based editor for SolidWorks material library files (.sldmat)." />
 <meta property="og:title" content="SLDMAT Editor" />
-<meta property="og:description" content="Browser-based editor for SolidWorks material library files (.sldmat). No install required." />
+<meta property="og:description" content="Browser-based editor for SolidWorks material library files (.sldmat)." />
 <meta property="og:url" content="https://sldmateditor.csankey.com/sldmat-editor.html" />
 <meta property="og:type" content="website" />
 <meta property="og:image" content="https://sldmateditor.csankey.com/preview.svg" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://sldmateditor.csankey.com/preview.svg" />
 <meta name="twitter:title" content="SLDMAT Editor" />
-<meta name="twitter:description" content="Browser-based editor for SolidWorks material library files (.sldmat). No install required." />
+<meta name="twitter:description" content="Browser-based editor for SolidWorks material library files (.sldmat)." />
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -867,9 +867,20 @@ function AppHeader({
    COMPONENT: LandingPage
    ============================================================= */
 
-function LandingPage({ onImport, onCreateNew }) {
+function LandingPage({ onImport, onCreateNew, onFileDrop }) {
+  const [dragging, setDragging] = React.useState(false);
+
+  const handleDragOver = (e) => { e.preventDefault(); setDragging(true); };
+  const handleDragLeave = (e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); };
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) onFileDrop(file);
+  };
+
   return (
-    <div className="landing">
+    <div className="landing" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
       <div style={{ textAlign: "center" }}>
         <div className="landing-title">
           {icons.logoLg}
@@ -879,7 +890,7 @@ function LandingPage({ onImport, onCreateNew }) {
       </div>
 
       <div className="landing-cards">
-        <div className="landing-card" onClick={onImport}>
+        <div className="landing-card" onClick={onImport} style={dragging ? { borderColor: "var(--accent)", background: "var(--accent-10)" } : {}}>
           {icons.importFile}
           <div style={{ textAlign: "center" }}>
             <div className="landing-card-title">Import .sldmat</div>
@@ -1071,7 +1082,7 @@ function Sidebar({
               {isExpanded && cat.materials.map(mat => {
                 const isInSelection = selectedMats.has(mat.id);
                 const isPrimary     = primaryMat === mat.id;
-                const isDragging    = dragItem?.matId === mat.id;
+                const isDragging    = dragItem?.items?.some(i => i.matId === mat.id);
                 const isDropHere    = dropTarget?.matId === mat.id;
 
                 let rowClass = "mat-row";
@@ -1414,8 +1425,7 @@ function App() {
 
   /* ── File I/O ── */
 
-  const handleFileLoad = (e) => {
-    const file = e.target.files[0];
+  const loadFile = (file) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
@@ -1449,6 +1459,8 @@ function App() {
     };
     reader.readAsArrayBuffer(file);
   };
+
+  const handleFileLoad = (e) => loadFile(e.target.files[0]);
 
   const handleCreateNew = () => {
     setData([{ name: "Custom Materials", materials: [] }]);
@@ -1806,7 +1818,16 @@ function App() {
 
   /* ── Drag & drop ── */
 
-  const handleDragStart   = (catIdx, matId)               => setDragItem({ catIdx, matId });
+  const handleDragStart = (catIdx, matId) => {
+    let items;
+    if (selectedMats.has(matId)) {
+      items = [];
+      data.forEach((cat, ci) => cat.materials.forEach(m => { if (selectedMats.has(m.id)) items.push({ catIdx: ci, matId: m.id }); }));
+    } else {
+      items = [{ catIdx, matId }];
+    }
+    setDragItem({ items });
+  };
   const handleDragOver    = (e, targetCatIdx, targetMatId) => { e.preventDefault(); setDropTarget({ catIdx: targetCatIdx, matId: targetMatId }); };
   const handleDragOverCat = (e, targetCatIdx)              => { e.preventDefault(); setDropTarget({ catIdx: targetCatIdx, matId: null }); };
   const handleDragEnd     = ()                             => { setDragItem(null); setDropTarget(null); };
@@ -1814,19 +1835,20 @@ function App() {
   const handleDrop = (e, targetCatIdx) => {
     e.preventDefault();
     if (!dragItem) return;
-    const { catIdx: srcCat, matId } = dragItem;
-    const mat = data[srcCat].materials.find(m => m.id === matId);
-    if (!mat) return;
+    const { items } = dragItem;
+    const draggedIds = new Set(items.map(i => i.matId));
+    const movedMats  = items.map(({ catIdx, matId }) => data[catIdx].materials.find(m => m.id === matId)).filter(Boolean);
+    if (!movedMats.length) return;
     setDataSorted(d => {
-      const nd = [...d];
-      nd[srcCat]       = { ...nd[srcCat],       materials: nd[srcCat].materials.filter(m => m.id !== matId) };
-      nd[targetCatIdx] = { ...nd[targetCatIdx], materials: [...nd[targetCatIdx].materials, mat] };
+      const nd = d.map(cat => ({ ...cat, materials: cat.materials.filter(m => !draggedIds.has(m.id)) }));
+      nd[targetCatIdx] = { ...nd[targetCatIdx], materials: [...nd[targetCatIdx].materials, ...movedMats] };
       return nd;
     });
     setExpandedCats(e => ({ ...e, [targetCatIdx]: true }));
     setDragItem(null);
     setDropTarget(null);
-    showToast('Moved "' + mat.name + '" \u2192 "' + data[targetCatIdx].name + '"');
+    if (items.length === 1) showToast('Moved "' + movedMats[0].name + '" \u2192 "' + data[targetCatIdx].name + '"');
+    else                    showToast('Moved ' + items.length + ' materials \u2192 "' + data[targetCatIdx].name + '"');
   };
 
   /* ── Derived data ── */
@@ -1898,6 +1920,7 @@ function App() {
         <LandingPage
           onImport={() => fileRef.current?.click()}
           onCreateNew={handleCreateNew}
+          onFileDrop={loadFile}
         />
       ) : (
         <div className="main">
